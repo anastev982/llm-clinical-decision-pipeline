@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
-from src.risk_flags_cross import detect_cross_answer_flags
+from src.archive.risk_flags_cross import detect_cross_answer_flags
 
 @dataclass
 class EvaluationResult:

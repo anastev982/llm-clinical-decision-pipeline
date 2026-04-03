@@ -1,72 +1,144 @@
 # LLM Clinical Decision Pipeline
 
-Ovaj projekat služi za evaluaciju odgovora velikih jezičkih modela (LLM) u kontekstu kliničke podrške odlučivanju, uz dodatni sloj bezbednosne logike.
+## Overview
 
-## Cilj projekta
+This project evaluates how large language models (LLMs) respond to clinical decision-support questions when combined with an additional safety and policy layer.
 
-Cilj projekta je da poredi odgovore modela i da, na osnovu definisane politike odlučivanja, svaki odgovor svrsta u jednu od sledećih kategorija:
+Rather than comparing model answers only at the text level, the pipeline introduces structured risk detection, guardrails, and decision logic designed for **high-stakes medical scenarios**. The goal is to assess whether a model response should be accepted, warned on, deferred, escalated, or refused based on the clinical context and associated risk signals.
 
-- ACCEPT
-- WARN
-- DEFER
-- ESCALATE
-- REFUSE
+---
 
-Projekat je zamišljen za pitanja medicinskog tipa, odnosno za high-stakes scenarije u kojima nije dovoljno samo porediti tekst odgovora, već je potrebno uvesti i dodatne sigurnosne provere.
+## Project Goal
 
-## Trenutna verzija
+The main goal of this project is to compare LLM outputs in a clinical setting and classify each response into one of the following decision categories:
 
-Trenutna verzija koristi dva bazna modela za evaluaciju:
+- **ACCEPT**
+- **WARN**
+- **DEFER**
+- **ESCALATE**
+- **REFUSE**
 
-- ChatGPT
-- GPT-4
+This is particularly important for medical and safety-sensitive questions, where a response may sound fluent or plausible but still be unsafe, incomplete, or inappropriate for autonomous use.
 
-Arhitektura je postavljena tako da se kasnije mogu dodavati i drugi modeli.
+---
 
-## Struktura pipeline-a
+## Current Scope
 
-Sistem radi kroz nekoliko koraka:
+The current version evaluates two baseline models:
 
-1. **Rule-based detekcija signala rizika**  
-   Prepoznaju se obrasci kao što su:
-   - traženje doze
-   - kontekst trudnoće
-   - pedijatrijski kontekst
-   - kombinovanje lekova
-   - samostalno menjanje terapije
-   - visokorizični lekovi
+- **ChatGPT**
+- **GPT-4**
 
-2. **LLM-assisted risk enrichment**  
-   Po potrebi se dodaju dodatni strukturisani signali rizika.
+The architecture is modular and designed to support additional models in future experiments.
 
-3. **Guardrail routing**  
-   Za jasno rizične slučajeve primenjuje se short-circuit logika i sistem odmah vraća odluku.
+---
 
-4. **Decision policy layer**  
-   Na osnovu prikupljenih signala donosi se finalna sistemska odluka:
-   `ACCEPT`, `WARN`, `DEFER`, `ESCALATE` ili `REFUSE`.
+## Why This Project Matters
 
-5. **Evaluacija i izveštavanje**  
-   Rezultati se porede sa očekivanim oznakama iz skupa pitanja.
+Clinical decision support is a high-risk domain. In these settings, it is not enough to measure whether an answer is relevant or well-written. A useful evaluation framework must also consider:
 
-## Organizacija projekta
+- whether the question involves dosage or treatment adjustment
+- whether the case includes pregnancy, pediatrics, or other vulnerable contexts
+- whether medication combinations or contraindications are involved
+- whether the model should be allowed to answer directly at all
 
-- `src/guardrails/rules.py` – detekcija signala rizika
-- `src/guardrails/router.py` – short-circuit logika za najrizičnije slučajeve
-- `src/guardrails/decision_policy.py` – centralna logika odlučivanja
-- `src/compare_models.py` – pokretanje evaluacije nad modelima
-- `src/reporting.py` – prikaz rezultata i sažetaka
+This project addresses that need by combining model comparison with a policy-driven safety layer.
 
-## Skup pitanja
+---
 
-Benchmark pitanja se nalaze u fajlu:
+## Pipeline Architecture
+
+The system operates through several stages:
+
+### 1. Rule-Based Risk Signal Detection
+
+The pipeline first identifies predefined risk patterns, such as:
+
+- dosage requests
+- pregnancy-related context
+- pediatric context
+- medication combinations
+- self-adjustment of therapy
+- high-risk medications
+
+### 2. LLM-Assisted Risk Enrichment
+
+When needed, the system adds extra structured risk signals through an auxiliary LLM-based step, helping capture broader or less explicit risk cues.
+
+### 3. Guardrail Routing
+
+For clearly high-risk cases, the pipeline applies short-circuit logic and returns a system decision immediately, without relying on a full downstream answer flow.
+
+### 4. Decision Policy Layer
+
+The final decision is generated using the collected signals and mapped into one of the core categories:
+
+- `ACCEPT`
+- `WARN`
+- `DEFER`
+- `ESCALATE`
+- `REFUSE`
+
+### 5. Evaluation and Reporting
+
+The resulting system decisions are compared against expected labels defined in the benchmark question set.
+
+---
+
+## Repository Structure
+
+- `src/guardrails/rules.py` – rule-based risk signal detection
+- `src/guardrails/router.py` – short-circuit routing for high-risk cases
+- `src/guardrails/decision_policy.py` – central decision logic
+- `src/compare_models.py` – model comparison and evaluation runner
+- `src/reporting.py` – result summaries and reporting
+- `data/clinical_questions.json` – benchmark dataset with expected labels
+
+---
+
+## Benchmark Questions
+
+The project uses a structured question set stored in:
 
 - `data/clinical_questions.json`
 
-Svako pitanje sadrži očekivanu odluku i očekivani nivo ozbiljnosti.
+Each question includes:
 
-## Pokretanje projekta
+- the question text
+- an expected decision label
+- an expected severity level
+
+This allows the pipeline to evaluate not only model output, but also whether the final routed decision matches the intended safety outcome.
+
+---
+
+## Running the Project
 
 ```bash
 python -m src.compare_models
 ```
+
+## Design Principles
+
+This project is built around a few core principles:
+
+Safety first – fluent answers are not enough in clinical contexts
+Policy over raw generation – decisions should be constrained by explicit rules and risk signals
+Structured evaluation – responses should be judged against predefined expected outcomes
+Extensibility – new models, rules, and policies can be added over time
+
+## Future Work
+
+Planned next steps include:
+
+adding more LLMs to the comparison framework
+expanding the clinical benchmark set
+refining risk signal detection and policy mapping
+improving reporting and error analysis
+exploring more robust model-vs-policy comparison strategies
+
+## Purpose of the Project
+
+This project was developed as a practical exploration of LLM trustworthiness in clinical decision support.
+
+Its focus is not only on whether a model can answer a question, but whether the system as a whole can respond in a way that is safer, more structured, and more appropriate for high-stakes use cases.

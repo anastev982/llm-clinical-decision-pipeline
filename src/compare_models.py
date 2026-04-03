@@ -61,14 +61,16 @@ def build_mr(
 
     mr.decision_ok = None if exp_dec is None else dec_ok
     mr.severity_ok = None if exp_sev is None else sev_ok
-    mr.false_accept = bool(exp_dec is not None and exp_dec != "ACCEPT" and mr.decision == "ACCEPT")
+    mr.false_accept = exp_dec is not None and exp_dec != "ACCEPT" and mr.decision == "ACCEPT"
     mr.passed = (exp_dec is not None or exp_sev is not None) and dec_ok and sev_ok
 
     return mr
 
 
 def enrich_codes_with_gptmini(q: Question, codes, high_stakes: bool, audit: dict):
-    if not (high_stakes or not codes):
+    # No need for call ing GPTmini if the question is not high stakes and we already have some codes.
+    # If otherwise, proceed with the GPTmini call.
+    if not high_stakes and codes:
         return codes, None, None, audit
 
     risk = detect_risk_gptmini(
@@ -111,6 +113,9 @@ def make_ctx(q: Question, codes, audit, llm_decision, llm_severity) -> DecisionC
 
 def apply_guardrail_result(q: Question, q_res: SingleQuestionResult, model_keys: List[str], routed):
     decision, severity, msg = routed
+    # All models independently receive same guardrails result because 
+    # guardrails decision does not depends of the model, it is applien before the model even 
+    # answers. This is expected behavior, not a bug. 
     for key in model_keys:
         q_res.model_results[key] = build_mr(
             q=q,
@@ -120,8 +125,7 @@ def apply_guardrail_result(q: Question, q_res: SingleQuestionResult, model_keys:
             source="guardrail",
         )
 
-
-def run_one_model(q: Question, ctx: DecisionContext, model_name: str, key: str, get_answer) -> ModelResult:
+def run_one_model(q: Question, ctx: DecisionContext, model_name: str, get_answer: Callable) -> ModelResult:
     try:
         answer = get_answer(model_name, q.text)
         out = decide_one(ctx, model_name=model_name, answer=answer)
@@ -153,6 +157,8 @@ def finalize_question(final_result: FinalResult, q: Question, q_res: SingleQuest
 
 def run_models(models: List[str], questions: List[Question], get_answer: Callable[[str, str], str]) -> FinalResult:
     pairs = normalize_models(models)
+    # `keys` list extract here ones here from the normalized pairs,
+    # so we dont't have to extract it every time in the loop.
     keys = [key for _, key in pairs]
     final_result = FinalResult()
 
@@ -174,7 +180,9 @@ def run_models(models: List[str], questions: List[Question], get_answer: Callabl
             continue
 
         for model_name, key in pairs:
-            q_res.model_results[key] = run_one_model(q, ctx, model_name, key, get_answer)
+            # 'key' is used here for storing the result of the model in q_res.model_results
+            # under the appropriate key (e.g., "ChatGPT", "GPT-4").
+            q_res.model_results[key] = run_one_model(q, ctx, model_name, get_answer)
 
         finalize_question(final_result, q, q_res, ctx, codes)
 
@@ -182,11 +190,21 @@ def run_models(models: List[str], questions: List[Question], get_answer: Callabl
 
 
 if __name__ == "__main__":
+   # Added an API key check right after load_env(), before execution starts, 
+   # so failures appear immediately with a clear message instead of crashing later during runtime.
+    import os
+    required_env_vars = ["OPENAI_API_KEY"]
+    if missing := [var for var in required_env_vars if not os.getenv(var)]:
+        raise EnvironmentError(
+           f"The following environment variables are missing: {', '.join(missing)}. "
+           "Check the .env file or your system environment variables."
+        )
+
     questions = load_questions("data/clinical_questions.json")
-    print(f"Učitano {len(questions)} pitanja")
+    print(f"Loaded {len(questions)} questions")
 
     models = ["ChatGPT", "GPT-4"]
-    print(f"\nEvaluiram {len(models)} modela na {len(questions)} pitanja...")
+    print(f"\nEvaluating {len(models)} models on {len(questions)} questions...")
 
     results = run_models(models, questions, get_answer_fn)
     print_results(results)

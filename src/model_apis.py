@@ -19,60 +19,46 @@ if not api_key:
 
 _openai_client = OpenAI(api_key=api_key)
 
+
+# DEBUG moved to module level (global variable),
+DEBUG = False
+
 print("LOADED model_apis FROM:", __file__)
 
+
 def get_answer_gemini(model: str, question: str) -> str:
-    #Placeholder for gemini API
+    # Placeholder for Gemini API
     raise NotImplementedError("Gemini API not implemented.")
 
+
 def get_answer_deepseek(model: str, question: str) -> str:
-    #Placeholder for gemini
+    # Placeholder for DeepSeek API
     raise NotImplementedError("DeepSeek API is not implemented.")
 
+
 def get_answer_openai(model: str, question: str) -> str:
-    key = normalize_model(model) 
+    key = normalize_model(model)
     api_model = OPENAI_MODEL_MAP.get(key, "gpt-4o-mini")
-    DEBUG = False
+
     if DEBUG:
         print(f"[DEBUG] model={model} key={key} api_model={api_model}")
-    
+
     response = _openai_client.chat.completions.create(
         model=api_model,
         messages=[{"role": "user", "content": question}],
         temperature=0.0,
-)
+    )
     return (response.choices[0].message.content or "").strip()  # type: ignore
 
-'''def fake_get_answer(model: str, question: str) -> str:
-    """
-    Lažna funkcija za testiranje bez API ključeva.
-    Vraća različite odgovore zavisno od modela da simulira razlike.
-    """
-    #Normalizujemo ulaz na nepotrebne karaktere
-    key = normalize_model(model)
-    
-    # Simuliramo različite stilove odgovora
-    responses = {
-        "gemini": f"According to medical guidelines, {question} The answer involves liver function and glucose metabolism.",
-        "deepseek": f"Clinical response: {question} Mechanism: decreases hepatic glucose production.",
-        "claude": f"Medical analysis: {question} Effect: reduces liver glucose output and improves insulin sensitivity.",
-        "perplexity": f"Sourced from literature: {question} Key mechanism: inhibition of hepatic glucose release.",
-        "copilot": f"Healthcare insight: {question} Function: lowers blood glucose via hepatic pathway.",
-        "gpt4": f"GPT-4 analysis: {question} Advanced reasoning indicates hepatic glucose suppression.",
-        "chatgpt": f"ChatGPT response: {question} According to OpenAI's model, the mechanism involves...",
-    }
-    
-    # Return answer for requested model, or default
-    return responses.get(key, f"Generic answer for: {question}")'''
-    
+
 def get_answer_fn(model: str, question: str) -> str:
     key = normalize_model(model)
-    
-    #OpenAI
+
+    # OpenAI
     if key in {"chatgpt", "gpt4", "gpt4o", "gptmini"}:
         return get_answer_openai(model, question)
-    
-    #Ostali
+
+    # Other providers
     if key.startswith("gemini"):
         return get_answer_gemini(model, question)
 
@@ -83,24 +69,28 @@ def get_answer_fn(model: str, question: str) -> str:
 
 
 if __name__ == "__main__":
-    #Test funk
+    # Test normalize functions
     print(normalize_model("GPT-4"))        # gpt4
     print(normalize_model("Gemini Pro"))   # geminipro
     print(normalize_model("claude-3.5"))   # claude35
-    print(normalize_model("perplexity"))  
-    print(normalize_model("copilot"))   
-    print(normalize_model("chatgpt"))   
-    
-    
+    print(normalize_model("perplexity"))
+    print(normalize_model("copilot"))
+    print(normalize_model("chatgpt"))
+
     print(normalize_models(["GPT-4", "Gemini Pro", "  claude  "]))
-    
+
     # Test get_answer_fn
     print("\n=== Test get_answer_fn ===")
     question = "What is metformin?"
-    
+
     all_models = ["ChatGPT", "Gemini", "Claude", "Perplexity", "DeepSeek", "CoPilot", "GPT-4"]
-    
+
     for model in all_models:
-        answer = get_answer_fn(model, question)
+        # `key` is now defined at the start of each iteration, before it is used in the print statement.
         key = normalize_model(model)
-        print(f"{model:12} → {key:15}: {answer[:40]}...")
+
+        try:
+            answer = get_answer_fn(model, question)
+            print(f"{model:12} → {key:15}: {answer[:40]}...")
+        except NotImplementedError as e:
+            print(f"{model:12} → {key:15}: NOT IMPLEMENTED — {e}")
