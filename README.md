@@ -6,6 +6,14 @@ This project evaluates how large language models (LLMs) respond to clinical deci
 
 Rather than comparing model answers only at the text level, the pipeline introduces structured risk detection, guardrails, and decision logic designed for **high-stakes medical scenarios**. The goal is to assess whether a model response should be accepted, warned on, deferred, escalated, or refused based on the clinical context and associated risk signals.
 
+## Highlights
+
+- 55 medication-related benchmark questions
+- 5 safety-oriented decision categories
+- 60.0% system accuracy
+- 16.4% false accept rate
+- consistent error patterns across both baseline models
+
 ## Project Goal
 
 The main goal of this project is to compare LLM outputs in a clinical setting and classify each response into one of the following decision categories:
@@ -119,6 +127,12 @@ Initial evaluation on the 55-question benchmark showed:
 - **Consistent error patterns across both baseline models**
 
 The most important finding was not only the score itself, but the structure of the errors. The pipeline handled many explicit high-risk cases well, but still showed weaknesses in implicitly risky prompts, educational/professional-context questions, and some self-adjustment or dangerous-intent cases.
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## Running the Project
 
